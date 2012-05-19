@@ -8,6 +8,8 @@
 
 #import <UIKit/UIKit.h>
 #import <MapKit/MapKit.h> 
+#import "HANFeature.h"
+#import "HANAnnotationView.h"
 
 @interface FirstViewController : UIViewController <MKMapViewDelegate>
 

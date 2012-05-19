@@ -7,6 +7,7 @@
 //
 
 #import "FirstViewController.h"
+#import "HANFeatureDetailView.h"
 
 @interface FirstViewController ()
 
@@ -16,9 +17,9 @@
 @synthesize map;
 
 
-- (void)viewDidAppear:(BOOL)animated
+- (void)viewDidLoad
 {
-    [super viewDidAppear:animated];
+    [super viewDidLoad];
     
     NSString *url = @"http://demo.openblockproject.org/api/dev1/items.json?locationid=zipcodes/02115";
     NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:
@@ -43,25 +44,16 @@
                                float maxLong = -INFINITY;
                                
                                for (NSDictionary *feature in features) {
-                                   NSArray *coords = [[feature objectForKey:@"geometry"] objectForKey:@"coordinates"];
-                                   NSLog(@"F: %@", feature);
-                                   NSString *title = [[feature objectForKey:@"properties"] objectForKey:@"title"];
                                    
-                                   float longitude = [[coords objectAtIndex:0] floatValue];
-                                   float latitude = [[coords objectAtIndex:1] floatValue];
-
-                                   minLong = MIN(minLong, longitude);
-                                   maxLong = MAX(maxLong, longitude);
-                                   minLat = MIN(minLat, latitude);
-                                   maxLat = MAX(maxLat, latitude);
+                                   HANFeature *aFeature = [[HANFeature alloc] initWithDictionary:feature];
+                                   
+                                   minLong = MIN(minLong, aFeature.longitude);
+                                   maxLong = MAX(maxLong, aFeature.longitude);
+                                   minLat = MIN(minLat, aFeature.latitude);
+                                   maxLat = MAX(maxLat, aFeature.latitude);
                                    
                                    
-                                   MKPointAnnotation *point = [[MKPointAnnotation alloc] init];
-                                   point.coordinate = CLLocationCoordinate2DMake(latitude, longitude);
-                                   point.title = title;
-                                   [pinArray addObject:point];
-                                   
-                                   NSLog(@"Lat: %f, %f", latitude, longitude);
+                                   [pinArray addObject:aFeature];
                                    
                                }
                                
@@ -70,11 +62,8 @@
                                float centerLat = (maxLat + minLat) / 2.0;
                                float centerLong = (minLong + maxLong) / 2.0;
                                
-                               NSLog(@"Lat: [%f > %f], Long: [%f > %f]", minLat, maxLat, minLong, maxLong);
                                
-                               NSLog(@"(clat: %f, clong: %f", centerLat, centerLong);
                                [map setRegion:MKCoordinateRegionMake(CLLocationCoordinate2DMake(centerLat, centerLong), MKCoordinateSpanMake(latSpan, longSpan))];
-                            
                                
                                dispatch_async(dispatch_get_main_queue(), ^{
                                    [map addAnnotations:pinArray];
@@ -87,29 +76,50 @@
 
 }
 
+
+- (void)showFeatureDetail:(id)sender
+{
+    NSLog(@"Got somethin from %@", sender);
+    HANFeature *feature = (HANFeature *)[[self.map selectedAnnotations] objectAtIndex:0];
+    NSLog(@"Should push a feature: %@", feature.title);
+    
+    HANFeatureDetailView *detailVC = [[HANFeatureDetailView alloc] init];
+    detailVC.feature = feature;
+    [self.navigationController pushViewController:detailVC animated:YES];
+
+}
+
+
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
 {
     return (interfaceOrientation != UIInterfaceOrientationPortraitUpsideDown);
 }
 
+
 - (MKAnnotationView *)mapView:(MKMapView *)mapView viewForAnnotation:(id <MKAnnotation>)annotation
 {
     
-	if ([annotation isKindOfClass:[MKPointAnnotation class]])
+	if ([annotation isKindOfClass:[HANFeature class]])
 	{
         
-		MKPinAnnotationView*    pinView = (MKPinAnnotationView*)[self.map dequeueReusableAnnotationViewWithIdentifier:@"JustAPin"];
+		MKPinAnnotationView* pinView = (MKPinAnnotationView *)[self.map dequeueReusableAnnotationViewWithIdentifier:@"HANAnnotationView"];
 		
 		if (!pinView)
 		{
 			// If an existing pin view was not available, create one.
-			pinView = [[MKPinAnnotationView alloc] initWithAnnotation:annotation reuseIdentifier:@"JustAPin"];
+			pinView = [[MKPinAnnotationView alloc] initWithAnnotation:annotation reuseIdentifier:@"HANAnnotationView"];
 			pinView.pinColor = MKPinAnnotationColorRed;
 			pinView.animatesDrop = YES;
 			pinView.canShowCallout = YES;
 			
 			// Add a detail disclosure button to the callout.
 			// TODO: add some info about the location
+            UIButton* rightButton = [UIButton buttonWithType:
+                                     UIButtonTypeDetailDisclosure];
+            [rightButton addTarget:self action:@selector(showFeatureDetail:)
+                  forControlEvents:UIControlEventTouchUpInside];
+            pinView.rightCalloutAccessoryView = rightButton;
+            
 		}
 		else
 			pinView.annotation = annotation;
